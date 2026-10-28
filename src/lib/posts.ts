@@ -46,13 +46,13 @@ export function revalidateSite() {
  * static generation across many workers against the shared Neon pooler, or
  * when a burst of ISR revalidations contends for pooled connections.
  */
-async function withTxRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
+async function withTxRetry<T>(fn: () => Promise<T>, attempts = 6): Promise<T> {
   for (let i = 0; i < attempts; i++) {
     try {
       return await fn()
     } catch (e) {
       if ((e as { code?: string }).code !== 'P2028' || i === attempts - 1) throw e
-      await new Promise((r) => setTimeout(r, 100 * 2 ** i))
+      await new Promise((r) => setTimeout(r, 200 * 2 ** i))
     }
   }
   throw new Error('unreachable')
