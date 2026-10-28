@@ -9,3 +9,6 @@ src/generated
 .vercel
 coverage
 .DS_Store
+
+# local test noise
+node-test.log
