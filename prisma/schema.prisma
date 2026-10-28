@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Category {
+  market_wrap
+  equity_analysis
+  news_brief
+  macro_radar
+}
+
+enum Exchange {
+  NGX
+  GSE
+  NSE
+}
+
+enum Sentiment {
+  positive
+  neutral
+  negative
+}
+
+enum PostStatus {
+  published
+  retracted
+}
+
+model Post {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  category       Category
+  exchange       Exchange?
+  tickers        String[]   @default([]) // stored as "EXCHANGE:SYMBOL", e.g. NGX:ZENITHBANK
+  tags           String[]   @default([])
+  excerpt        String
+  bodyMd         String     @db.Text
+  metrics        Json?
+  sentiment      Sentiment?
+  status         PostStatus @default(published)
+  correctionNote String?
+  clientRef      String?    @unique
+  sources        String[]   @default([])
+  asOf           DateTime?
+  publishedAt    DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  redirects      PostRedirect[]
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([category, status, publishedAt(sort: Desc)])
+  @@index([exchange, status, publishedAt(sort: Desc)])
+  @@index([tickers], type: Gin)
+  @@index([tags], type: Gin)
+}
+
+// Old slugs keep working (301) after a title change regenerates the slug.
+model PostRedirect {
+  oldSlug   String   @id
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
