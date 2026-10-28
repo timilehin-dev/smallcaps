@@ -1,66 +1,67 @@
-# FrontierCap — Tooling Inventory (Phase A)
+# FrontierCap â€” Tooling Inventory (Phases Aâ€“C)
 
-Checked 2026-10-28 on the agent host (Windows). This records what is available, what is
-missing, and the fallbacks agreed for the build. Nothing in here is final; it updates as
-Phases B–E proceed.
+Updated 2026-10-28. Records what this harness offers, what is missing, and the
+project-local playbooks written to cover the gaps. See `docs/playbooks/` for the checklists
+followed instead of the named skills/plugins.
 
 ## Runtime / local toolchain
 
 | Tool | Version / status | Notes |
 |------|------------------|-------|
-| Node.js | v24.18.0 | >= 22 required by package.json engines. OK. |
-| npm | 11.16.0 | Used for install/scripts. |
-| git | 2.54.0 | Available for commits. |
-| TypeScript | ~5.9 (via deps) | tsc --noEmit runs clean after install. |
-| Next.js | 16.4.3 | App Router, ISR revalidate=60. |
-| Prisma | 7.10.1 + @prisma/adapter-pg | Client generated to src/generated/prisma on postinstall. |
-| Vitest | 3 | Test runner (npm test = vitest run). No tests exist yet. |
+| Node.js | v24.x | >= 22 required by package.json engines. OK. |
+| npm | 11.x | Install/scripts. |
+| git | 2.x | Commits and pushes. |
+| TypeScript | ~5.9 (via deps) | `tsc --noEmit` clean. |
+| Next.js | 16.4.3 | App Router, ISR `revalidate=60`, Turbopack. |
+| Prisma | 7.10.1 + `@prisma/adapter-pg` | Client generated to `src/generated/prisma`. |
+| Vitest | 3.x | `npm test` = `vitest run`. |
+| PostgreSQL | 17.x (local) | Installed locally for dev/test because Neon is unreachable here. |
 
 ## Install / generate status
 
-- npm install: **succeeded** (368 packages). Prisma client auto-generated via postinstall.
-- npx prisma generate: **succeeded** (Client 7.10.1 -> src/generated/prisma).
-- npx tsc --noEmit: **passed with 0 errors**. Scaffold type-checks cleanly.
-- npm audit: 9 vulnerabilities reported (3 moderate, 4 high, 2 critical). To be
-  reviewed in Phase E; likely transitive. No changes made in Phase A.
-- Install-script note: npm flagged prisma, @prisma/engines, esbuild install
-  scripts as not covered by allow-scripts. They ran (client generated), but this should
-  be confirmed for the Vercel build pipeline.
+- `npm install`: **succeeded**; Prisma client auto-generated via `postinstall`.
+- `npx tsc --noEmit`: **passes, 0 errors** (including the Phase C pages).
+- `npx vitest run`: **60/60 pass** against a real local Postgres.
+- `npm run build`: **succeeds** when `DATABASE_URL` is set; **fails without it** because the
+  section pages prerender and query the DB. Confirms the documented deploy order.
 
 ## External CLIs / connectors
 
-| Capability | Status in this harness | Fallback |
-|------------|------------------------|----------|
-| GitHub CLI (gh) | **Not installed** | Plain git + browser; project-local playbook in docs/. |
-| Vercel CLI | **Not installed** | Vercel web console + Neon/Upstash/Blob integrations set up by owner; deploy via Vercel UI or npm run vercel-build semantics. |
-| neonctl | **Not installed** | Neon dashboard for branch/migration; Prisma Migrate against the dev branch via npm run db:migrate. |
-| GitHub / Neon / Vercel MCP connectors | **Not active** in this session | Manual steps documented; owner performs account-side actions. |
+| Capability | Status in this harness | Fallback used |
+|------------|------------------------|---------------|
+| GitHub CLI (`gh`) | available; `GITHUB_TOKEN` set | Plain `git` + GitHub API. |
+| Vercel CLI | **not installed** | Owner deploys via the Vercel dashboard/UI. |
+| `neonctl` | **not installed** | Local PostgreSQL 17 for dev/test; Neon via dashboard. |
+| `psql` | installed locally | Direct inspection of tables and indexes. |
+| `unzip` | not installed | Python `zipfile` if the scaffold zip is needed. |
+| GitHub / Neon / Vercel MCP connectors | **not active** in this session | Manual steps documented for the owner. |
+| Docker daemon | not running | Local Postgres installed natively instead. |
 
-## Scaffold: what exists vs. what is still to build
+## Skills / plugins found vs. written
 
-### Present (reviewed)
-- src/lib/: api.ts, auth.ts, db.ts, errors.ts, format.ts, posts.ts,
-  ratelimit.ts, schemas.ts, site.ts, slug.ts, tickers.ts — full API/read layer.
-- src/app/api/v1/: health, media, posts (POST/GET), posts/[ref] (GET/PATCH/DELETE).
-- src/app/: layout.tsx, page.tsx (home), [section]/page.tsx, [section]/page/[n]/page.tsx,
-  not-found.tsx, openapi.json route.
-- src/components/: Chips, Disclaimer, JsonLd, Markdown, MetricsTable,
-  PostCard, SearchBox, SectionView.
-- prisma/schema.prisma, prisma.config.ts, config files, .env.example, scripts/
-  (smoke.mjs, seed.mjs referenced in package.json).
+The named skill families in the brief (`think-before-coding`, `design`, `audit`,
+`data-modeling-discipline`, `migration-safety`, `idempotency-and-side-effects`,
+`error-handling-as-design`, `auth-and-authorization`, `security-discipline`,
+`testing-with-discernment`, the SearchFit SEO family, `frontend-design`, `design-system`,
+`accessibility-audit`, `ux-writing`, and the API-drift / 42Crunch plugins) are **not
+available** as installable plugins in this harness. Per section 2, equivalent project-local
+playbooks were written and followed:
 
-### Missing / to build (Phases B–D)
-- Public pages: posts/[slug], ticker/[exchange]/[symbol], about, disclaimer, search.
-- SEO routes: feed.xml (RSS 2.0, published only), sitemap.xml, robots.txt,
-  search-index.json.
-- DESIGN.md (placeholder design system).
-- Unit + integration tests (slug collisions/unicode/length, strict schemas, ticker
-  normalization, PATCH no-reset, auth constant-time/rotation/short-key->500).
-- Concurrency test: 20 identical client_ref POSTs in parallel -> exactly one row.
-- Prisma migration for the Neon dev branch (prisma/migrations/).
+| Missing capability | Project-local substitute |
+|--------------------|--------------------------|
+| `think-before-coding`, `data-modeling-discipline`, `migration-safety` | `docs/playbooks/backend-discipline.md` |
+| `idempotency-and-side-effects`, `error-handling-as-design` | `docs/playbooks/backend-discipline.md` |
+| `security-discipline`, `auth-and-authorization`, `audit` | `docs/playbooks/api-security.md` |
+| `testing-with-discernment` | `docs/playbooks/testing.md` |
+| `seo-check`, `generate-schema`, `technical-seo` | `docs/playbooks/seo.md` |
+| `frontend-design`, `design-system`, `accessibility-audit` | `DESIGN.md` + `docs/playbooks/seo.md` (a11y section) |
+| API drift detector (schema vs OpenAPI) | `src/lib/openapi.contract.test.ts` (8 assertions) |
+
+Available skills that *were* usable here: `github`, `github-actions`, `security`, `vercel`,
+`npm`. They informed the CI workflow, the security posture and the deploy notes.
 
 ## Deviations carried forward
-Prisma enums, EXCHANGE:SYMBOL tickers, PostRedirect, sources/asOf fields,
-4MB media cap, no CORS, Upstash rate limiting, /openapi.json, datasource URL read in
-prisma.config.ts. All already reflected in code; recorded here so the final Phase E
-report can list them as intentional deviations from the original spec text.
+
+Prisma enums; `EXCHANGE:SYMBOL` tickers; `PostRedirect`; `sources`/`asOf` fields; 4 MB media
+cap; no CORS; Upstash rate limiting; served `/openapi.json`; datasource URL in
+`prisma.config.ts`. All intentional; listed again in the Phase E report.

@@ -2,7 +2,17 @@ import 'dotenv/config'
 import { afterAll, describe, expect, it } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { getDb } from './db'
-import { createPost, findRedirect, getBySlug, latestPublished, listPosts, retractPost, updatePost } from './posts'
+import {
+  allPublishedForIndex,
+  createPost,
+  findRedirect,
+  getBySlug,
+  latestPublished,
+  listPosts,
+  publishedByTicker,
+  retractPost,
+  updatePost,
+} from './posts'
 import type { CreateInput } from './schemas'
 
 const skip = !process.env.DATABASE_URL
@@ -109,5 +119,21 @@ describe.skipIf(skip)('posts layer (integration, live Neon dev branch)', () => {
     await expect(
       updatePost('no-such-ref-' + randomUUID(), { excerpt: 'Whatever the new excerpt says.' }),
     ).rejects.toMatchObject({ status: 404, code: 'not_found' })
+  }, T)
+
+  it('excludes retracted posts from the public index (feed/sitemap source)', async () => {
+    const { post } = await createPost(mk('index'))
+    ids.push(post.id)
+    expect((await allPublishedForIndex()).some((p) => p.slug === post.slug)).toBe(true)
+    await retractPost(post.id, 'withdrawn')
+    expect((await allPublishedForIndex()).some((p) => p.slug === post.slug)).toBe(false)
+  }, T)
+
+  it('publishedByTicker excludes retracted posts', async () => {
+    const { post } = await createPost({ ...mk('tick'), exchange: 'GSE', tickers: ['GSE:ZZT'] })
+    ids.push(post.id)
+    expect((await publishedByTicker('GSE:ZZT')).some((p) => p.id === post.id)).toBe(true)
+    await retractPost(post.id, 'withdrawn')
+    expect((await publishedByTicker('GSE:ZZT')).some((p) => p.id === post.id)).toBe(false)
   }, T)
 })

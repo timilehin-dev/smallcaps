@@ -6,7 +6,7 @@ const err = { description: 'Error', content: { 'application/json': { schema: { $
 const ref = { name: 'ref', in: 'path', required: true, schema: { type: 'string' }, description: 'Post id or slug' }
 const secured = [{ bearer: [] }]
 
-const spec = {
+export const spec = {
   openapi: '3.1.0',
   info: { title: 'FrontierCap API', version: '1.0.0', description: 'Private API for the research agent. All endpoints except /health need a Bearer key.' },
   servers: [{ url: '/api/v1' }],

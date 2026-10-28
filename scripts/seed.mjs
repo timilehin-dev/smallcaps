@@ -44,17 +44,17 @@ const samples = [
     client_ref: 'sample-gse-wrap',
   },
   {
-    title: 'Fictional: NSE macro radar - sample policy note',
-    category: 'macro_radar',
+    title: 'Fictional: NSE news brief - sample listing note',
+    category: 'news_brief',
     exchange: 'NSE',
     tickers: ['NSE:SMCA'],
-    tags: ['sample', 'macro'],
-    excerpt: 'Illustrative sample note - not real research.',
+    tags: ['sample', 'news'],
+    excerpt: 'Illustrative sample brief - not real news.',
     body_md:
-      '# Macro radar (illustrative)\n\n' +
-      'A fictional macro note for Nairobi Securities Exchange layout demo purposes only. It is not an investment recommendation.',
+      '# News brief (illustrative)\n\n' +
+      'A fictional news brief for Nairobi Securities Exchange layout demo purposes only. It is not an investment recommendation.',
     sentiment: 'neutral',
-    client_ref: 'sample-nse-macro',
+    client_ref: 'sample-nse-brief',
   },
 ]
 
