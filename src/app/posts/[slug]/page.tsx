@@ -113,8 +113,14 @@ export default async function PostPage({ params }: Props) {
         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{post.title}</h1>
         <p className="mt-3 text-lg text-neutral-600">{post.excerpt}</p>
         <p className="mt-3 text-xs text-neutral-500">
-          AI-assisted analysis. Reviewed against the sources listed below; figures are as of{' '}
-          <time dateTime={asOf.toISOString()}>{fmtDate(asOf, post.exchange)}</time>.
+          AI-assisted analysis. Reviewed against the sources listed below.
+        </p>
+        <p className="mt-1 text-xs text-neutral-500">
+          Data as of{' '}
+          <time dateTime={asOf.toISOString()}>
+            {fmtDate(asOf, post.exchange, true)}
+          </time>
+          {post.exchange ? ` (${EXCHANGE_NAME[post.exchange]})` : ''}
         </p>
         {post.tickers.length ? (
           <div className="mt-4">
