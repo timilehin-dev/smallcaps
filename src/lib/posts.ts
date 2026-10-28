@@ -40,6 +40,24 @@ export function revalidateSite() {
   revalidatePath('/', 'layout')
 }
 
+/**
+ * Retry on P2028 ("Unable to start a transaction in the given time") with
+ * exponential backoff. This is the expected failure when `next build` runs
+ * static generation across many workers against the shared Neon pooler, or
+ * when a burst of ISR revalidations contends for pooled connections.
+ */
+async function withTxRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if ((e as { code?: string }).code !== 'P2028' || i === attempts - 1) throw e
+      await new Promise((r) => setTimeout(r, 100 * 2 ** i))
+    }
+  }
+  throw new Error('unreachable')
+}
+
 function isUnique(e: unknown): boolean {
   if (typeof e !== 'object' || e === null) return false
   const err = e as { code?: string; message?: string }
@@ -134,22 +152,24 @@ export async function updatePost(ref: string, patch: PatchInput): Promise<Post> 
   for (let attempt = 0; attempt < 6; attempt++) {
     const newSlug = baseSlug ? (attempt === 0 ? baseSlug : withSuffix(baseSlug)) : null
     try {
-      return await db.$transaction(async (tx) => {
-        const slugChanges = !!newSlug && newSlug !== existing.slug
-        if (slugChanges) await tx.postRedirect.deleteMany({ where: { oldSlug: newSlug! } })
-        const post = await tx.post.update({
-          where: { id: existing.id },
-          data: slugChanges ? { ...data, slug: newSlug! } : data,
-        })
-        if (slugChanges) {
-          await tx.postRedirect.upsert({
-            where: { oldSlug: existing.slug },
-            create: { oldSlug: existing.slug, postId: existing.id },
-            update: { postId: existing.id },
+      return await withTxRetry(() =>
+        db.$transaction(async (tx) => {
+          const slugChanges = !!newSlug && newSlug !== existing.slug
+          if (slugChanges) await tx.postRedirect.deleteMany({ where: { oldSlug: newSlug! } })
+          const post = await tx.post.update({
+            where: { id: existing.id },
+            data: slugChanges ? { ...data, slug: newSlug! } : data,
           })
-        }
-        return post
-      })
+          if (slugChanges) {
+            await tx.postRedirect.upsert({
+              where: { oldSlug: existing.slug },
+              create: { oldSlug: existing.slug, postId: existing.id },
+              update: { postId: existing.id },
+            })
+          }
+          return post
+        }),
+      )
     } catch (e) {
       if (isUnique(e) && newSlug) continue
       throw e
@@ -182,15 +202,17 @@ export async function listPosts(q: ListQuery) {
   if (q.from || q.to) where.publishedAt = { ...(q.from && { gte: q.from }), ...(q.to && { lte: q.to }) }
 
   const db = getDb()
-  const [data, total] = await db.$transaction([
-    db.post.findMany({
-      where,
-      orderBy: { publishedAt: 'desc' },
-      skip: (q.page - 1) * q.per_page,
-      take: q.per_page,
-    }),
-    db.post.count({ where }),
-  ])
+  const [data, total] = await withTxRetry(() =>
+    db.$transaction([
+      db.post.findMany({
+        where,
+        orderBy: { publishedAt: 'desc' },
+        skip: (q.page - 1) * q.per_page,
+        take: q.per_page,
+      }),
+      db.post.count({ where }),
+    ]),
+  )
   return { data, total }
 }
 
@@ -204,10 +226,12 @@ export const latestPublished = (limit: number) =>
 export async function publishedByCategory(category: Category, page: number, perPage: number) {
   const db = getDb()
   const where = { ...published, category }
-  const [posts, total] = await db.$transaction([
-    db.post.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * perPage, take: perPage }),
-    db.post.count({ where }),
-  ])
+  const [posts, total] = await withTxRetry(() =>
+    db.$transaction([
+      db.post.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * perPage, take: perPage }),
+      db.post.count({ where }),
+    ]),
+  )
   return { posts, total }
 }
 
@@ -228,6 +252,16 @@ export async function allPublishedForIndex() {
     where: published,
     orderBy: { publishedAt: 'desc' },
     take: 5000,
-    select: { slug: true, title: true, excerpt: true, category: true, exchange: true, tickers: true, tags: true, publishedAt: true, updatedAt: true },
+    select: {
+      slug: true,
+      title: true,
+      excerpt: true,
+      category: true,
+      exchange: true,
+      tickers: true,
+      tags: true,
+      publishedAt: true,
+      updatedAt: true,
+    },
   })
 }
