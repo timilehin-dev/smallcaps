@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { latestPublished } from '@/lib/posts'
-import { CATEGORY_SECTION, SECTIONS, TAGLINE } from '@/lib/site'
+import { CATEGORY_SECTION, SECTIONS, SITE_NAME, TAGLINE } from '@/lib/site'
 import { PostCard } from '@/components/PostCard'
 
 export const revalidate = 60
@@ -10,9 +10,10 @@ export default async function Home() {
   const [hero, ...rest] = posts
   return (
     <div className="space-y-12">
-      <section>
+      <h1 className="sr-only">{SITE_NAME} — {TAGLINE}</h1>
+      <section aria-label="Latest post">
         <p className="mb-4 text-sm text-neutral-500">{TAGLINE}</p>
-        {hero ? <PostCard post={hero} large /> : <p className="text-neutral-500">No posts yet. Check back soon.</p>}
+        {hero ? <PostCard post={hero} large headingLevel="h2" /> : <p className="text-neutral-500">No posts yet. Check back soon.</p>}
       </section>
       {Object.entries(SECTIONS).map(([key, s]) => {
         const items = rest.filter((p) => CATEGORY_SECTION[p.category] === key).slice(0, 4)

@@ -70,3 +70,5 @@ System/Inter stack (`--font-sans`). No webfont download.
 - Visible focus is the browser default (no `outline: none` anywhere).
 - No information conveyed by colour alone: deltas show a signed number, not just red/green.
 - Images from Markdown require alt text (non-Blob images degrade to their alt string).
+- The homepage carries a visually hidden (`sr-only`) `<h1>`; the visible tagline stays a
+  paragraph. Heading order is `h1` → `h2` (hero and section titles) → `h3` (cards).
