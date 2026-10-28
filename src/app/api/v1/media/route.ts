@@ -1,7 +1,7 @@
 import { put } from '@vercel/blob'
-import { randomUUID } from 'node:crypto'
 import { ApiError } from '@/lib/errors'
 import { json, withApi } from '@/lib/api'
+import { mediaStoreName, mediaUrl } from '@/lib/media'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // Vercel serverless functions reject request bodies above ~4.5MB, so the cap is 4MB.
 const MAX_BYTES = 4 * 1024 * 1024
 
-function sniff(b: Buffer): { mime: string; ext: string } | null {
+function sniff(b: Buffer): { mime: string; ext: 'jpg' | 'png' | 'webp' } | null {
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { mime: 'image/jpeg', ext: 'jpg' }
   if (b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
     return { mime: 'image/png', ext: 'png' }
@@ -39,11 +39,10 @@ export const POST = withApi(async (req) => {
   const type = sniff(buf) // trust the bytes, not the client-supplied content type
   if (!type) throw new ApiError(415, 'unsupported_media_type', 'Only JPEG, PNG and WebP images are accepted')
 
-  const month = new Date().toISOString().slice(0, 7)
-  const blob = await put(`media/${month}/${randomUUID()}.${type.ext}`, buf, {
-    access: 'public',
-    contentType: type.mime,
-    addRandomSuffix: false,
-  })
-  return json({ url: blob.url }, { status: 201 })
+  // access:'private' — the blob store is configured private. The image is stored
+  // under the store's namespace and exposed publicly via the /media-file/[...name]
+  // reader, which fetches server-side with BLOB_READ_WRITE_TOKEN.
+  const name = mediaStoreName(type.ext)
+  await put(name, buf, { access: 'private', contentType: type.mime, addRandomSuffix: false })
+  return json({ url: mediaUrl(name) }, { status: 201 })
 })

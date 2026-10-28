@@ -2,7 +2,11 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 // Images are only allowed from our own Vercel Blob store; everything else renders as alt text.
-const IMG_OK = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i
+import { MEDIA_FILE_RE } from '@/lib/media'
+// Serve images through the public /media-file reader, or accept the blob host
+// directly if a store is configured public. Markdown's media URLs are relative
+// (/media-file/...) so they work on any domain without SITE_URL.
+const IMG_OK = MEDIA_FILE_RE
 
 export function Markdown({ source }: { source: string }) {
   return (

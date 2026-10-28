@@ -1,4 +1,4 @@
-# FrontierCap — Final Report (Phase E)
+# FrontierCap â€” Final Report (Phase E)
 
 Date: 2026-10-28. Scope: build audit against FRONTIERCAP_AGENT_INSTRUCTIONS.md acceptance
 criteria, deviations, risks, and pre-launch checklist. Live site at time of writing:
@@ -53,7 +53,8 @@ https://smallcaps-nine.vercel.app (commit f6d94d8).
 10. **sitemap/robots as custom routes, not Next metadata conventions** - Phase E
     `sitemap.ts`/`robots.ts` conventions silently dropped post+ticker sitemap URLs;
     f6d94d8 restored the custom routes which are the verified-correct implementation.
-11. **P2028 retry** - not in the original spec; added because `next build` (7 static-gen
+11. **Private Vercel Blob store + /media-file public reader** - the configured store is private; uploads are stored with ccess:'private' and exposed through a token-protected server-side reader. URLs are relative (/media-file/...), so they work on any domain without SITE_URL.
+12. **P2028 retry** - not in the original spec; added because `next build` (7 static-gen
     workers) + ISR bursts against Neon's shared pooler cause transaction-start timeouts.
     Budget hardened in the final change (6 attempts, 200ms*2^n backoff).
 
